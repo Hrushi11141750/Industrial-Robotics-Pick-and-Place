@@ -1,0 +1,96 @@
+DEF rwuBallTeach_group3a()
+
+   ;==============================
+   ; SIGNAL DECLARATIONS
+   ;==============================
+   SIGNAL signalBall  $IN[15] ; Ball present in feeder
+   SIGNAL signalRed   $IN[16] ; Ball is red
+   SIGNAL signalGreen $IN[17] ; Ball is green
+   SIGNAL signalBlue  $IN[18] ; Ball is blue
+
+   ;==============================
+   ; VARIABLE DECLARATIONS
+   ;==============================
+   DECL INT count_red   = 1
+   DECL INT count_green = 1
+   DECL INT count_blue  = 1
+
+   DECL BOOL RED   = FALSE
+   DECL BOOL GREEN = FALSE
+   DECL BOOL BLUE  = FALSE
+
+   ;==============================
+   ; INITIALIZATION
+   ;==============================
+   SPTP HOME Vel=100% DEFAULT Tool[1]:TOOL_DATA[1] Base[0]
+   rwuGripperClose(FALSE) ; Open gripper
+
+   ;==============================
+   ; MAIN LOOP
+   ;==============================
+   WAIT FOR signalBall
+   WHILE (signalBall == TRUE) AND (count_red < 10) AND (count_blue < 10) AND (count_green < 10)
+
+      ;---------------------------
+      ; PICK BALL FROM FEEDER
+      ;---------------------------
+      SPTP P9_FeederHigh Vel=100% PDAT17 Tool[1]:TOOL_DATA[1] Base[1]:BASE_DATA[1]
+      SLIN P1_FeederUp   Vel=2 m/s CPDAT7  Tool[1]:TOOL_DATA[1] Base[1]:BASE_DATA[1]
+      SLIN P2_FeederDown Vel=2 m/s CPDAT8  Tool[1]:TOOL_DATA[1] Base[1]:BASE_DATA[1]
+      rwuGripperClose(TRUE) ; Close gripper to pick ball
+      SLIN P9_FeederHigh Vel=2 m/s CPDAT9  Tool[1]:TOOL_DATA[1] Base[1]:BASE_DATA[1]
+
+      ;---------------------------
+      ; MOVE TO SENSOR AND DETECT COLOR
+      ;---------------------------
+      SPTP P10_OverSensor Vel=100% PDAT21 Tool[1]:TOOL_DATA[1] Base[1]:BASE_DATA[1]
+      SLIN P11_DownSensor Vel=2 m/s CPDAT10 Tool[1]:TOOL_DATA[1] Base[1]:BASE_DATA[1]
+      WAIT SEC 1.0
+
+      RED   = signalRed
+      BLUE  = signalBlue
+      GREEN = signalGreen
+
+      SLIN P10_OverSensor Vel=2 m/s CPDAT11 Tool[1]:TOOL_DATA[1] Base[1]:BASE_DATA[1]
+
+      ;---------------------------
+      ; PLACE BALL IN CORRECT PALETTE
+      ;---------------------------
+      SPTP P13_OverPalette Vel=100% PDAT23 Tool[1]:TOOL_DATA[1] Base[1]:BASE_DATA[1]
+
+      IF RED == TRUE THEN
+         rwuPalette(count_red, XP_OverRed)
+         count_red = count_red + 1
+      ENDIF
+
+      IF BLUE == TRUE THEN
+         rwuPalette(count_blue, XP_OverBlue)
+         count_blue = count_blue + 1
+      ENDIF
+
+      IF GREEN == TRUE THEN
+         rwuPalette(count_green, XP_OverGreen)
+         count_green = count_green + 1
+      ENDIF
+
+      ; Reset flags for next ball
+      RED   = FALSE
+      BLUE  = FALSE
+      GREEN = FALSE
+
+      ;---------------------------
+      ; RETURN TO FEEDER
+      ;---------------------------
+      SPTP P13_OverPalette Vel=100% PDAT25 Tool[1]:TOOL_DATA[1] Base[1]:BASE_DATA[1]
+      rwuGripperClose(FALSE) ; Release ball
+      SPTP P9_FeederHigh Vel=100% PDAT13 Tool[1]:TOOL_DATA[1] Base[1]:BASE_DATA[1]
+      SPTP HOME Vel=100% PDAT26 Tool[1]:TOOL_DATA[1] Base[0]
+
+   ENDWHILE
+
+   ;==============================
+   ; END OF PROCESS
+   ;==============================
+   HALT
+
+END
